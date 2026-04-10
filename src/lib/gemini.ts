@@ -1,7 +1,18 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { Story, BookParams } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let genAI: GoogleGenAI | null = null;
+
+function getAI() {
+  if (!genAI) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === "undefined") {
+      throw new Error("GEMINI_API_KEY is not defined. Please check your environment variables.");
+    }
+    genAI = new GoogleGenAI({ apiKey });
+  }
+  return genAI;
+}
 
 const STORY_SCHEMA = {
   type: Type.OBJECT,
@@ -66,10 +77,13 @@ const STORY_SCHEMA = {
 };
 
 export async function generateSpeech(text: string): Promise<string> {
-  const response = await ai.models.generateContent({
+  const ai: any = getAI();
+  const model = ai.getGenerativeModel({
     model: "gemini-2.5-flash-preview-tts",
+  });
+  const response = await model.generateContent({
     contents: [{ parts: [{ text: `Leia com uma voz doce e calma de contador de histórias infantil: ${text}` }] }],
-    config: {
+    generationConfig: {
       responseModalities: [Modality.AUDIO],
       speechConfig: {
         voiceConfig: {
@@ -116,6 +130,10 @@ export async function playAudio(base64Data: string) {
 }
 
 export async function generateStory(params: BookParams): Promise<Story> {
+  const ai: any = getAI();
+  const model = ai.getGenerativeModel({
+    model: "gemini-3-flash-preview",
+  });
   const prompt = `
     Você é o motor de inteligência artificial por trás do aplicativo "DreamScape", um gerador de livros infantis ilustrados e personalizados. 
     Sua tarefa é criar uma história curta, envolvente e pedagogicamente adequada para crianças.
@@ -142,10 +160,9 @@ export async function generateStory(params: BookParams): Promise<Story> {
     Retorne o JSON seguindo o esquema fornecido.
   `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: prompt,
-    config: {
+  const response = await model.generateContent({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: {
       responseMimeType: "application/json",
       responseSchema: STORY_SCHEMA as any
     }
@@ -161,6 +178,10 @@ export async function generateStory(params: BookParams): Promise<Story> {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function generatePageImage(prompt: string, retryCount = 0): Promise<string> {
+  const ai: any = getAI();
+  const model = ai.getGenerativeModel({
+    model: 'gemini-2.5-flash-image',
+  });
   const MAX_RETRIES = 2;
   const fallbackUrl = (p: string) => {
     const encodedPrompt = encodeURIComponent(p);
@@ -169,13 +190,10 @@ export async function generatePageImage(prompt: string, retryCount = 0): Promise
   };
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [{ text: prompt }],
-      },
-      config: {
-        imageConfig: { aspectRatio: "1:1" },
+    const response = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        imageConfig: { aspectRatio: "1:1" } as any,
       },
     });
 

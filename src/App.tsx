@@ -7,6 +7,7 @@ import { Login } from "./components/Login";
 import { Navigation } from "./components/Navigation";
 import { PremiumLearning } from "./components/PremiumLearning";
 import { PremiumWall } from "./components/PremiumWall";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { generateStory } from "./lib/gemini";
@@ -14,7 +15,7 @@ import { Story, BookParams } from "./types";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Wand2, Library, Settings as SettingsIcon, LogOut, User as UserIcon, Loader2 } from "lucide-react";
 import { Button } from "./components/ui/button";
-import { db, collection, query, where, onSnapshot, doc, setDoc, deleteDoc, handleFirestoreError, OperationType } from "./lib/firebase";
+import { db, collection, query, where, onSnapshot, doc, getDoc, setDoc, deleteDoc, handleFirestoreError, OperationType } from "./lib/firebase";
 
 type View = "form" | "reader" | "library" | "settings" | "login" | "learning";
 
@@ -34,11 +35,21 @@ function AppContent() {
       if (user) {
         if (view === "login") setView("library");
         
-        // Sync preferences from user object (Firestore)
-        const userData = user as any;
-        if (userData.theme) setTheme(userData.theme);
-        if (userData.color) setColor(userData.color);
-        if (userData.navColor) setNavColor(userData.navColor);
+        // Sync preferences from user document in Firestore
+        const fetchPreferences = async () => {
+          try {
+            const userSnap = await getDoc(doc(db, "users", user.uid));
+            if (userSnap.exists()) {
+              const userData = userSnap.data();
+              if (userData.theme) setTheme(userData.theme);
+              if (userData.color) setColor(userData.color);
+              if (userData.navColor) setNavColor(userData.navColor);
+            }
+          } catch (err) {
+            console.error("Failed to fetch preferences:", err);
+          }
+        };
+        fetchPreferences();
       } else {
         setView("login");
       }
@@ -244,10 +255,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <AppContent />
-      </ThemeProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ThemeProvider>
+          <AppContent />
+        </ThemeProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

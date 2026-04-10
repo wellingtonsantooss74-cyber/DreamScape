@@ -5,9 +5,9 @@ import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
 // Error Handling Helper
 export enum OperationType {
@@ -73,5 +73,21 @@ async function testConnection() {
 }
 testConnection();
 
-export { doc, getDoc, setDoc, updateDoc, collection, query, where, onSnapshot, deleteDoc, signInWithPopup, signOut, onAuthStateChanged };
+export { 
+  db, 
+  auth, 
+  googleProvider,
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  deleteDoc, 
+  signInWithPopup, 
+  signOut, 
+  onAuthStateChanged 
+};
 export type { User };
