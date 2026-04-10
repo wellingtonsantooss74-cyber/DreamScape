@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { db, doc, updateDoc, handleFirestoreError, OperationType, onSnapshot } from "../lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
@@ -15,23 +14,17 @@ interface ChildProfile {
 }
 
 export function ParentSettings() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [profiles, setProfiles] = useState<ChildProfile[]>([]);
   const [pin, setPin] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
-    const unsubscribe = onSnapshot(doc(db, "users", user.uid), (doc) => {
-      const data = doc.data();
-      if (data) {
-        setProfiles(data.childrenProfiles || []);
-        setPin(data.parentPin || "");
-      }
-      setLoading(false);
-    });
-    return () => unsubscribe();
+    if (user) {
+      setProfiles((user as any).childrenProfiles || []);
+      setPin((user as any).parentPin || "");
+    }
   }, [user]);
 
   const handleAddProfile = () => {
@@ -51,17 +44,12 @@ export function ParentSettings() {
   const saveSettings = async () => {
     if (!user) return;
     setIsSaving(true);
-    try {
-      await updateDoc(doc(db, "users", user.uid), {
-        childrenProfiles: profiles,
-        parentPin: pin,
-        updatedAt: new Date().toISOString()
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
-    } finally {
-      setIsSaving(false);
-    }
+    updateUser({
+      childrenProfiles: profiles,
+      parentPin: pin,
+      updatedAt: new Date().toISOString()
+    } as any);
+    setIsSaving(false);
   };
 
   if (loading) {

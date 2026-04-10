@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useTheme, ThemeType, ColorType, NavColorType } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
-import { db, doc, updateDoc, handleFirestoreError, OperationType } from "../lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
@@ -12,7 +11,7 @@ import { ParentSettings } from "./ParentSettings";
 
 export function Settings() {
   const { theme, color, navColor, setTheme, setColor, setNavColor } = useTheme();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"general" | "parents">("general");
   const [showPinEntry, setShowPinEntry] = useState(false);
@@ -43,22 +42,26 @@ export function Settings() {
   const updatePreferences = async (newTheme?: ThemeType, newColor?: ColorType, newNavColor?: NavColorType) => {
     if (!user) return;
     setIsSaving(true);
-    try {
-      const userRef = doc(db, "users", user.uid);
-      await updateDoc(userRef, {
-        theme: newTheme || theme,
-        color: newColor || color,
-        navColor: newNavColor || navColor,
-        updatedAt: new Date().toISOString()
-      });
-      if (newTheme) setTheme(newTheme);
-      if (newColor) setColor(newColor);
-      if (newNavColor) setNavColor(newNavColor);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
-    } finally {
-      setIsSaving(false);
+    
+    const updates: any = {
+      updatedAt: new Date().toISOString()
+    };
+    
+    if (newTheme) {
+      updates.theme = newTheme;
+      setTheme(newTheme);
     }
+    if (newColor) {
+      updates.color = newColor;
+      setColor(newColor);
+    }
+    if (newNavColor) {
+      updates.navColor = newNavColor;
+      setNavColor(newNavColor);
+    }
+    
+    updateUser(updates);
+    setIsSaving(false);
   };
 
   const themes: { id: ThemeType; label: string; icon: React.ReactNode }[] = [

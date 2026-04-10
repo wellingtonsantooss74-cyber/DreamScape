@@ -12,10 +12,10 @@ import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { generateStory } from "./lib/gemini";
 import { Story, BookParams } from "./types";
+import { storage } from "./lib/storage";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Wand2, Library, Settings as SettingsIcon, LogOut, User as UserIcon, Loader2 } from "lucide-react";
 import { Button } from "./components/ui/button";
-import { db, collection, query, where, onSnapshot, doc, getDoc, setDoc, deleteDoc, handleFirestoreError, OperationType } from "./lib/firebase";
 
 type View = "form" | "reader" | "library" | "settings" | "login" | "learning";
 
@@ -35,45 +35,26 @@ function AppContent() {
       if (user) {
         if (view === "login") setView("library");
         
-        // Sync preferences from user document in Firestore
-        const fetchPreferences = async () => {
-          try {
-            const userSnap = await getDoc(doc(db, "users", user.uid));
-            if (userSnap.exists()) {
-              const userData = userSnap.data();
-              if (userData.theme) setTheme(userData.theme);
-              if (userData.color) setColor(userData.color);
-              if (userData.navColor) setNavColor(userData.navColor);
-            }
-          } catch (err) {
-            console.error("Failed to fetch preferences:", err);
-          }
-        };
-        fetchPreferences();
+        // Sync preferences from user object
+        if (user.theme) setTheme(user.theme as any);
+        if (user.color) setColor(user.color as any);
+        if (user.navColor) setNavColor(user.navColor as any);
       } else {
         setView("login");
       }
     }
   }, [user, authLoading]);
 
-  // Load stories from Firestore
+  // Load stories from LocalStorage
   useEffect(() => {
     if (!user) {
       setSavedStories([]);
       return;
     }
 
-    const q = query(collection(db, "stories"), where("uid", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const stories = snapshot.docs.map(doc => doc.data() as Story);
-      // Sort by createdAt descending
-      setSavedStories(stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, "stories");
-    });
-
-    return () => unsubscribe();
-  }, [user]);
+    const stories = storage.getStories();
+    setSavedStories(stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+  }, [user, view]); // Re-load when view changes to ensure sync
 
   const handleLogoutAction = () => {
     logout();
@@ -93,7 +74,7 @@ function AppContent() {
         createdAt: new Date().toISOString()
       };
       
-      await setDoc(doc(db, "stories", storyId), newStory);
+      storage.saveStory(newStory);
       setStory(newStory);
       setView("reader");
     } catch (err) {
@@ -111,21 +92,14 @@ function AppContent() {
 
   const handleDeleteStory = async (id: string) => {
     if (confirm("Tem certeza que deseja apagar esta história mágica para sempre?")) {
-      try {
-        await deleteDoc(doc(db, "stories", id));
-      } catch (err) {
-        handleFirestoreError(err, OperationType.DELETE, `stories/${id}`);
-      }
+      storage.deleteStory(id);
+      setSavedStories(prev => prev.filter(s => s.id !== id));
     }
   };
 
   const handleUpdateStory = async (updatedStory: Story) => {
-    try {
-      await setDoc(doc(db, "stories", updatedStory.id), updatedStory);
-      setStory(updatedStory);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `stories/${updatedStory.id}`);
-    }
+    storage.saveStory(updatedStory);
+    setStory(updatedStory);
   };
 
   const handleReset = () => {
@@ -194,7 +168,7 @@ function AppContent() {
       <main className="relative z-10 container mx-auto px-4 pb-20">
         <AnimatePresence mode="wait">
           {view === "login" ? (
-            <Login onLogin={login} />
+            <Login />
           ) : view === "settings" ? (
             <div key="settings" className="mt-8">
               <Settings />

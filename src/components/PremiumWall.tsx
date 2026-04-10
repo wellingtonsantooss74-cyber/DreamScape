@@ -4,21 +4,13 @@ import { Button } from "./ui/button";
 import { Sparkles, Crown, Check, Star, Zap } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuth } from "../contexts/AuthContext";
-import { db, doc, updateDoc, handleFirestoreError, OperationType } from "../lib/firebase";
 
 export function PremiumWall() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
 
   const handleUpgrade = async () => {
     if (!user) return;
-    try {
-      await updateDoc(doc(db, "users", user.uid), {
-        isPremium: true,
-        updatedAt: new Date().toISOString()
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
-    }
+    updateUser({ isPremium: true });
   };
 
   const benefits = [

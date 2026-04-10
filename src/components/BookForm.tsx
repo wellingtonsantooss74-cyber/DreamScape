@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { BookParams } from "../types";
 import { useAuth } from "../contexts/AuthContext";
-import { db, doc, onSnapshot } from "../lib/firebase";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -29,14 +28,9 @@ export function BookForm({ onSubmit, isLoading }: BookFormProps) {
   });
 
   useEffect(() => {
-    if (!user) return;
-    const unsubscribe = onSnapshot(doc(db, "users", user.uid), (doc) => {
-      const data = doc.data();
-      if (data && data.childrenProfiles) {
-        setProfiles(data.childrenProfiles);
-      }
-    });
-    return () => unsubscribe();
+    if (user) {
+      setProfiles((user as any).childrenProfiles || []);
+    }
   }, [user]);
 
   const selectProfile = (profile: any) => {
