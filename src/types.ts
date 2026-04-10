@@ -23,6 +23,7 @@ export interface Question {
 
 export interface Story {
   id: string;
+  uid: string;
   createdAt: string;
   titulo: string;
   idade_alvo: string;

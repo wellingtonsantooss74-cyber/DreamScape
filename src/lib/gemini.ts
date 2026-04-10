@@ -158,35 +158,50 @@ export async function generateStory(params: BookParams): Promise<Story> {
   return JSON.parse(response.text) as Story;
 }
 
-export async function generatePageImage(prompt: string): Promise<string> {
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export async function generatePageImage(prompt: string, retryCount = 0): Promise<string> {
+  const MAX_RETRIES = 2;
+  const fallbackUrl = (p: string) => {
+    const encodedPrompt = encodeURIComponent(p);
+    // Using a more reliable seed and model parameter for the fallback
+    return `https://pollinations.ai/p/${encodedPrompt}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=flux&nologo=true`;
+  };
+
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
-        parts: [
-          {
-            text: prompt,
-          },
-        ],
+        parts: [{ text: prompt }],
       },
       config: {
-        imageConfig: {
-          aspectRatio: "1:1",
-        },
+        imageConfig: { aspectRatio: "1:1" },
       },
     });
 
-    for (const part of response.candidates[0].content.parts) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
-      }
+    const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+    if (part?.inlineData?.data) {
+      return `data:image/png;base64,${part.inlineData.data}`;
     }
-    throw new Error("Nenhuma imagem gerada");
-  } catch (error) {
-    console.error("Erro ao gerar imagem com Gemini:", error);
-    // Fallback to pollinations.ai for demo purposes if Gemini Image fails
-    // (e.g. if key doesn't support it or if it's not available in region)
-    const encodedPrompt = encodeURIComponent(prompt);
-    return `https://pollinations.ai/p/${encodedPrompt}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=flux`;
+    
+    throw new Error("Nenhuma imagem gerada na resposta");
+  } catch (error: any) {
+    const isQuotaError = error?.message?.includes("429") || error?.message?.includes("RESOURCE_EXHAUSTED");
+    
+    // Smart Retry Logic: If it's a quota error and we haven't reached max retries, wait and try again
+    if (isQuotaError && retryCount < MAX_RETRIES) {
+      const waitTime = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s
+      console.warn(`Quota excedida. Tentando novamente em ${waitTime/1000}s... (Tentativa ${retryCount + 1}/${MAX_RETRIES})`);
+      await sleep(waitTime);
+      return generatePageImage(prompt, retryCount + 1);
+    }
+
+    if (isQuotaError) {
+      console.warn("Quota do Gemini Image excedida após tentativas, usando fallback mágico de alta velocidade...");
+    } else {
+      console.error("Erro ao gerar imagem com Gemini:", error);
+    }
+    
+    return fallbackUrl(prompt);
   }
 }

@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (matches request.auth.uid)
+    // Fields:
+    //   - uid: string (required) - User ID
+    //   - displayName: string (required) - Name
+    //   - email: string (required) - Email (PII)
+    //   - photoURL: string (optional) - Profile Picture URL
+    //   - theme: string (optional) - UI Theme
+    //   - color: string (optional) - UI Color
+    //   - updatedAt: string (optional) - Last update
+    //
+    // Collection: stories
+    // Document ID: {storyId}
+    // Fields:
+    //   - id: string (required)
+    //   - uid: string (required) - Owner ID
+    //   - createdAt: string (required)
+    //   - titulo: string (required)
+    //   - idade_alvo: string
+    //   - personagens_principais: list
+    //   - paginas: list
+    //   - interatividade: map
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email']) &&
+             data.uid == request.auth.uid &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             isValidEmail(data.email) &&
+             (!('photoURL' in data) || data.photoURL is string) &&
+             (!('theme' in data) || data.theme in ['light', 'dark', 'sepia', 'ocean']) &&
+             (!('color' in data) || data.color in ['purple', 'blue', 'green', 'rose', 'orange']) &&
+             (!('navColor' in data) || data.navColor in ['default', 'glass', 'primary', 'dark', 'colorful']) &&
+             (!('isPremium' in data) || data.isPremium is bool) &&
+             (!('parentPin' in data) || (data.parentPin is string && data.parentPin.matches("^[0-9]{4}$"))) &&
+             (!('childrenProfiles' in data) || data.childrenProfiles is list);
+    }
+
+    function isValidStory(data) {
+      return data.keys().hasAll(['id', 'uid', 'createdAt', 'titulo', 'paginas']) &&
+             data.uid == request.auth.uid &&
+             data.titulo is string && data.titulo.size() > 0 && data.titulo.size() < 200 &&
+             data.paginas is list && data.paginas.size() <= 10;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // PII Protection: Only the owner can read their own profile
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+    }
+
+    match /stories/{storyId} {
+      // Stories are private to the creator
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidStory(request.resource.data);
+      allow update: if isDocOwner() && isValidStory(request.resource.data);
+      allow delete: if isDocOwner();
+    }
+  }
+}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Story, Page } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "./ui/button";
-import { ChevronLeft, ChevronRight, BookOpen, Download, RefreshCw, Sparkles, Volume2, VolumeX, Loader2, MessageCircle, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen, Download, RefreshCw, Sparkles, Volume2, VolumeX, Loader2, MessageCircle, CheckCircle2, Library } from "lucide-react";
 import { generatePageImage, generateSpeech, playAudio } from "../lib/gemini";
 import { Skeleton } from "./ui/skeleton";
 import { Input } from "./ui/input";
@@ -10,9 +10,12 @@ import { Input } from "./ui/input";
 interface BookReaderProps {
   story: Story;
   onReset: () => void;
+  onUpdateStory: (story: Story) => void;
+  isGeneratingImage: boolean;
+  setIsGeneratingImage: (val: boolean) => void;
 }
 
-export function BookReader({ story, onReset }: BookReaderProps) {
+export function BookReader({ story, onReset, onUpdateStory, isGeneratingImage, setIsGeneratingImage }: BookReaderProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [pages, setPages] = useState<Page[]>(story.paginas);
   const [loadingImages, setLoadingImages] = useState<Record<number, boolean>>({});
@@ -78,20 +81,21 @@ export function BookReader({ story, onReset }: BookReaderProps) {
   }, [currentPage]);
 
   const loadPageImage = async (index: number) => {
-    if (pages[index].imageUrl || loadingImages[index]) return;
+    if (pages[index].imageUrl || loadingImages[index] || isGeneratingImage) return;
 
     setLoadingImages(prev => ({ ...prev, [index]: true }));
+    setIsGeneratingImage(true);
     try {
       const imageUrl = await generatePageImage(pages[index].prompt_imagem);
-      setPages(prev => {
-        const newPages = [...prev];
-        newPages[index] = { ...newPages[index], imageUrl };
-        return newPages;
-      });
+      const updatedPages = [...pages];
+      updatedPages[index] = { ...updatedPages[index], imageUrl };
+      setPages(updatedPages);
+      onUpdateStory({ ...story, paginas: updatedPages });
     } catch (error) {
       console.error("Erro ao carregar imagem:", error);
     } finally {
       setLoadingImages(prev => ({ ...prev, [index]: false }));
+      setIsGeneratingImage(false);
     }
   };
 
@@ -162,14 +166,16 @@ export function BookReader({ story, onReset }: BookReaderProps) {
           <BookOpen className="text-primary h-8 w-8" />
           <h1 className="text-3xl font-serif font-bold text-primary">{story.titulo}</h1>
         </div>
-        <Button variant="outline" onClick={onReset} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Nova História
-        </Button>
-        <Button variant="outline" onClick={handleRestartStory} className="gap-2 ml-2">
-          <BookOpen className="h-4 w-4" />
-          Reler História
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleRestartStory} className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Reler
+          </Button>
+          <Button variant="default" onClick={onReset} className="gap-2 bg-primary hover:bg-primary/90">
+            <Library className="h-4 w-4" />
+            Sair da Leitura
+          </Button>
+        </div>
         {isPreloading && (
           <div className="flex items-center gap-2 ml-4 text-xs text-primary/60 animate-pulse">
             <Sparkles className="h-3 w-3" />
