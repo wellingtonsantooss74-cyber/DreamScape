@@ -80,8 +80,9 @@ const STORY_SCHEMA = {
 export async function generateSpeech(text: string): Promise<string> {
   try {
     const ai = getAI();
+    const modelName = "gemini-1.5-flash";
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash-latest", // Usando o alias mais estável e atualizado
+      model: modelName,
       contents: [{ parts: [{ text: `Leia com uma voz doce e calma de contador de histórias infantil: ${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
@@ -95,7 +96,7 @@ export async function generateSpeech(text: string): Promise<string> {
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) {
-      throw new Error("O modelo não retornou áudio. Verifique se a funcionalidade de áudio está disponível.");
+      throw new Error(`O modelo ${modelName} não retornou áudio. Verifique se a funcionalidade de áudio está disponível.`);
     }
 
     return base64Audio;
@@ -103,6 +104,9 @@ export async function generateSpeech(text: string): Promise<string> {
     console.error("Erro no TTS:", error);
     if (error.message?.includes("fetch")) {
       throw new Error("Erro de conexão ao gerar áudio. Verifique sua internet.");
+    }
+    if (error.message?.includes("not found") || error.message?.includes("404")) {
+      throw new Error(`Erro: O modelo Gemini para áudio não foi encontrado. Detalhes: ${error.message}`);
     }
     throw error;
   }
@@ -163,8 +167,9 @@ export async function generateStory(params: BookParams): Promise<Story> {
       Retorne o JSON seguindo o esquema fornecido.
     `;
 
+    const modelName = "gemini-1.5-flash";
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash-latest", // Usando o alias mais estável e atualizado
+      model: modelName,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
         responseMimeType: "application/json",
@@ -173,7 +178,7 @@ export async function generateStory(params: BookParams): Promise<Story> {
     });
 
     if (!response.text) {
-      throw new Error("O modelo não retornou texto para a história.");
+      throw new Error(`O modelo ${modelName} não retornou texto para a história.`);
     }
 
     return JSON.parse(response.text) as Story;
@@ -181,6 +186,10 @@ export async function generateStory(params: BookParams): Promise<Story> {
     console.error("Erro na geração da história:", error);
     if (error.message?.includes("fetch")) {
       throw new Error("Erro de conexão com a IA. Verifique sua internet ou chave de API.");
+    }
+    // Se o erro for de modelo não encontrado, tenta explicar melhor
+    if (error.message?.includes("not found") || error.message?.includes("404")) {
+      throw new Error(`Erro: O modelo Gemini não foi encontrado ou não está disponível para sua chave de API. Detalhes: ${error.message}`);
     }
     throw error;
   }
