@@ -45,14 +45,21 @@ export const storage = {
   
   saveStory: async (story: Story) => {
     if (supabase) {
-      const { error } = await supabase.from('stories').upsert({
-        id: story.id,
-        uid: story.uid,
-        title: story.titulo,
-        story_data: story,
-        created_at: story.createdAt
-      });
-      if (error) console.error("Erro ao salvar história no Supabase:", error);
+      try {
+        const { error } = await supabase.from('stories').upsert({
+          id: story.id,
+          uid: story.uid,
+          title: story.titulo,
+          story_data: story,
+          created_at: story.createdAt
+        });
+        if (error) throw error;
+      } catch (e: any) {
+        console.error("Erro ao salvar história no Supabase:", e);
+        if (e.message?.includes("fetch")) {
+          console.warn("Falha na sincronização com a nuvem (fetch error). A história foi salva apenas localmente.");
+        }
+      }
     }
     
     // Sempre salva localmente como backup/cache
@@ -61,8 +68,12 @@ export const storage = {
   
   deleteStory: async (id: string) => {
     if (supabase) {
-      const { error } = await supabase.from('stories').delete().eq('id', id);
-      if (error) console.error("Erro ao deletar história no Supabase:", error);
+      try {
+        const { error } = await supabase.from('stories').delete().eq('id', id);
+        if (error) throw error;
+      } catch (e: any) {
+        console.error("Erro ao deletar história no Supabase:", e);
+      }
     }
     await db.deleteStory(id);
   },

@@ -19,6 +19,8 @@ interface AuthContextType {
   loading: boolean;
   updateUser: (data: Partial<User>) => Promise<void>;
   signIn: (email: string) => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -61,6 +63,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setLoading(false);
       }
+    }).catch(err => {
+      console.error("Erro ao iniciar sessão:", err);
+      setUser(null);
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -114,17 +120,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(updated);
 
     if (supabase) {
-      // Salva no Supabase
-      await supabase.from('profiles').upsert({
-        id: user.uid,
-        display_name: updated.displayName,
-        theme: updated.theme,
-        color: updated.color,
-        nav_color: updated.navColor,
-        is_premium: updated.isPremium,
-        parent_pin: updated.parentPin,
-        children_profiles: updated.childrenProfiles
-      });
+      try {
+        // Salva no Supabase
+        const { error } = await supabase.from('profiles').upsert({
+          id: user.uid,
+          display_name: updated.displayName,
+          theme: updated.theme,
+          color: updated.color,
+          nav_color: updated.navColor,
+          is_premium: updated.isPremium,
+          parent_pin: updated.parentPin,
+          children_profiles: updated.childrenProfiles
+        });
+        if (error) throw error;
+      } catch (e: any) {
+        console.error("Erro ao salvar perfil no Supabase:", e);
+        if (e.message?.includes("fetch")) {
+          alert("Erro de conexão com o banco de dados. Verifique sua internet.");
+        }
+      }
     } else {
       // Fallback local
       localStorage.setItem("dreamscape_local_user", JSON.stringify(updated));
@@ -136,9 +150,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       alert("Supabase não configurado. Usando modo local.");
       return;
     }
-    const { error } = await supabase.auth.signInWithOtp({ email });
-    if (error) throw error;
-    alert("Link mágico enviado para seu email!");
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      if (error) throw error;
+      alert("Link mágico enviado para seu email!");
+    } catch (e: any) {
+      console.error("Erro no login:", e);
+      if (e.message?.includes("fetch")) {
+        throw new Error("Não foi possível conectar ao servidor de login. Verifique sua internet ou se o Supabase está configurado corretamente.");
+      }
+      throw e;
+    }
+  };
+
+  const signInWithPassword = async (email: string, password: string) => {
+    if (!supabase) return;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } catch (e: any) {
+      console.error("Erro no login com senha:", e);
+      if (e.message?.includes("fetch")) {
+        throw new Error("Erro de conexão. Verifique se o endereço do Supabase está correto ou se há internet.");
+      }
+      throw e;
+    }
+  };
+
+  const signUp = async (email: string, password: string) => {
+    if (!supabase) return;
+    try {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+    } catch (e: any) {
+      console.error("Erro no cadastro:", e);
+      if (e.message?.includes("fetch")) {
+        throw new Error("Erro de conexão ao criar conta. Verifique sua internet.");
+      }
+      throw e;
+    }
   };
 
   const signOut = async () => {
@@ -151,7 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, updateUser, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, updateUser, signIn, signInWithPassword, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

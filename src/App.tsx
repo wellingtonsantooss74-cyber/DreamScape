@@ -17,6 +17,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Wand2, Library, Settings as SettingsIcon, LogOut, User as UserIcon, Loader2 } from "lucide-react";
 import { Button } from "./components/ui/button";
 
+import { Login } from "./components/Login";
+
 type View = "form" | "reader" | "library" | "settings" | "learning";
 
 function AppContent() {
@@ -40,7 +42,7 @@ function AppContent() {
 
   // Load stories from IndexedDB
   useEffect(() => {
-    if (!user) {
+    if (!user || user.uid === "local-user") {
       setSavedStories([]);
       return;
     }
@@ -53,8 +55,29 @@ function AppContent() {
     loadStories();
   }, [user, view]);
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground animate-pulse font-serif text-xl">Carregando magia...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não houver usuário ou for o usuário local (fallback), mostra tela de login
+  // Exceto se o Supabase não estiver configurado (o componente Login trata isso)
+  if (!user || user.uid === "local-user") {
+    return <Login />;
+  }
+
   const handleGenerate = async (params: BookParams) => {
-    if (!user) return;
+    if (!user) {
+      setError("Você precisa estar conectado para criar histórias mágicas. Vá em Ajustes > Conta.");
+      setView("settings");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -204,7 +227,7 @@ function AppContent() {
         <p>© 2026 DreamScape - Criado com magia e inteligência artificial</p>
       </footer>
 
-      {user && view !== "reader" && (
+      {view !== "reader" && (
         <Navigation 
           activeView={view} 
           onViewChange={setView} 
