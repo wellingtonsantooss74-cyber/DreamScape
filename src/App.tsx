@@ -1,3 +1,4 @@
+// DreamScape v1.1.0 - Vercel Compatibility Fix
 import React, { useState, useEffect } from "react";
 import { BookForm } from "./components/BookForm";
 import { BookReader } from "./components/BookReader";
