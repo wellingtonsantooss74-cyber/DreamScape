@@ -72,9 +72,9 @@ function AppContent() {
       await storage.saveStory(newStory);
       setStory(newStory);
       setView("reader");
-    } catch (err) {
-      console.error(err);
-      setError("Houve um erro ao criar sua história. Por favor, tente novamente.");
+    } catch (err: any) {
+      console.error("Erro na geração:", err);
+      setError(err.message || "Houve um erro ao criar sua história. Verifique sua chave de API.");
     } finally {
       setIsLoading(false);
     }
