@@ -6,10 +6,9 @@ import { useTheme } from "../contexts/ThemeContext";
 interface NavigationProps {
   activeView: string;
   onViewChange: (view: any) => void;
-  onLogout: () => void;
 }
 
-export function Navigation({ activeView, onViewChange, onLogout }: NavigationProps) {
+export function Navigation({ activeView, onViewChange }: NavigationProps) {
   const { navColor } = useTheme();
   const tabs = [
     { id: "library", label: "Biblioteca", icon: Library },
@@ -73,24 +72,6 @@ export function Navigation({ activeView, onViewChange, onLogout }: NavigationPro
             </button>
           );
         })}
-        
-        <div className={`w-px h-8 mx-1 ${
-          (navColor === "primary" || navColor === "dark" || navColor === "colorful")
-            ? "bg-white/20"
-            : "bg-slate-200"
-        }`} />
-        
-        <button
-          onClick={onLogout}
-          className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-xl transition-all ${
-            (navColor === "primary" || navColor === "dark" || navColor === "colorful")
-              ? "text-white/70 hover:text-white hover:bg-red-500/20"
-              : "text-muted-foreground hover:text-red-500 hover:bg-red-50"
-          }`}
-        >
-          <LogOut className="h-5 w-5" />
-          <span className="text-[10px] font-medium uppercase tracking-wider">Sair</span>
-        </button>
       </div>
     </nav>
   );

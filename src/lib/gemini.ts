@@ -77,13 +77,11 @@ const STORY_SCHEMA = {
 };
 
 export async function generateSpeech(text: string): Promise<string> {
-  const ai: any = getAI();
-  const model = ai.getGenerativeModel({
+  const ai = getAI();
+  const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
-  });
-  const response = await model.generateContent({
     contents: [{ parts: [{ text: `Leia com uma voz doce e calma de contador de histórias infantil: ${text}` }] }],
-    generationConfig: {
+    config: {
       responseModalities: [Modality.AUDIO],
       speechConfig: {
         voiceConfig: {
@@ -130,10 +128,7 @@ export async function playAudio(base64Data: string) {
 }
 
 export async function generateStory(params: BookParams): Promise<Story> {
-  const ai: any = getAI();
-  const model = ai.getGenerativeModel({
-    model: "gemini-3-flash-preview",
-  });
+  const ai = getAI();
   const prompt = `
     Você é o motor de inteligência artificial por trás do aplicativo "DreamScape", um gerador de livros infantis ilustrados e personalizados. 
     Sua tarefa é criar uma história curta, envolvente e pedagogicamente adequada para crianças.
@@ -160,9 +155,10 @@ export async function generateStory(params: BookParams): Promise<Story> {
     Retorne o JSON seguindo o esquema fornecido.
   `;
 
-  const response = await model.generateContent({
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
     contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: {
+    config: {
       responseMimeType: "application/json",
       responseSchema: STORY_SCHEMA as any
     }
@@ -178,10 +174,7 @@ export async function generateStory(params: BookParams): Promise<Story> {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function generatePageImage(prompt: string, retryCount = 0): Promise<string> {
-  const ai: any = getAI();
-  const model = ai.getGenerativeModel({
-    model: 'gemini-2.5-flash-image',
-  });
+  const ai = getAI();
   const MAX_RETRIES = 2;
   const fallbackUrl = (p: string) => {
     const encodedPrompt = encodeURIComponent(p);
@@ -190,19 +183,26 @@ export async function generatePageImage(prompt: string, retryCount = 0): Promise
   };
 
   try {
-    const response = await model.generateContent({
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
+      config: {
         imageConfig: { aspectRatio: "1:1" } as any,
       },
     });
 
-    const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-    if (part?.inlineData?.data) {
-      return `data:image/png;base64,${part.inlineData.data}`;
+    // Iterate through candidates and parts to find the image data
+    const candidate = response.candidates?.[0];
+    if (candidate?.content?.parts) {
+      for (const part of candidate.content.parts) {
+        if (part.inlineData?.data) {
+          return `data:image/png;base64,${part.inlineData.data}`;
+        }
+      }
     }
     
-    throw new Error("Nenhuma imagem gerada na resposta");
+    console.warn("Gemini Image API returned no image data, using fallback...");
+    return fallbackUrl(prompt);
   } catch (error: any) {
     const isQuotaError = error?.message?.includes("429") || error?.message?.includes("RESOURCE_EXHAUSTED");
     

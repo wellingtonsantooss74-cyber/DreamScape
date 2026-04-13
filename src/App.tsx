@@ -3,7 +3,6 @@ import { BookForm } from "./components/BookForm";
 import { BookReader } from "./components/BookReader";
 import { StoryLibrary } from "./components/StoryLibrary";
 import { Settings } from "./components/Settings";
-import { Login } from "./components/Login";
 import { Navigation } from "./components/Navigation";
 import { PremiumLearning } from "./components/PremiumLearning";
 import { PremiumWall } from "./components/PremiumWall";
@@ -17,31 +16,25 @@ import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, Wand2, Library, Settings as SettingsIcon, LogOut, User as UserIcon, Loader2 } from "lucide-react";
 import { Button } from "./components/ui/button";
 
-type View = "form" | "reader" | "library" | "settings" | "login" | "learning";
+type View = "form" | "reader" | "library" | "settings" | "learning";
 
 function AppContent() {
-  const { user, loading: authLoading, login, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { setTheme, setColor, setNavColor } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [story, setStory] = useState<Story | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<View>("login");
+  const [view, setView] = useState<View>("library");
   const [savedStories, setSavedStories] = useState<Story[]>([]);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   // Sync view with auth state
   useEffect(() => {
-    if (!authLoading) {
-      if (user) {
-        if (view === "login") setView("library");
-        
-        // Sync preferences from user object
-        if (user.theme) setTheme(user.theme as any);
-        if (user.color) setColor(user.color as any);
-        if (user.navColor) setNavColor(user.navColor as any);
-      } else {
-        setView("login");
-      }
+    if (!authLoading && user) {
+      // Sync preferences from user object
+      if (user.theme) setTheme(user.theme as any);
+      if (user.color) setColor(user.color as any);
+      if (user.navColor) setNavColor(user.navColor as any);
     }
   }, [user, authLoading]);
 
@@ -54,11 +47,7 @@ function AppContent() {
 
     const stories = storage.getStories();
     setSavedStories(stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-  }, [user, view]); // Re-load when view changes to ensure sync
-
-  const handleLogoutAction = () => {
-    logout();
-  };
+  }, [user, view]);
 
   const handleGenerate = async (params: BookParams) => {
     if (!user) return;
@@ -67,11 +56,13 @@ function AppContent() {
     try {
       const generatedStory = await generateStory(params);
       const storyId = crypto.randomUUID();
+      const createdAt = new Date().toISOString();
+      
       const newStory: Story = {
         ...generatedStory,
         id: storyId,
         uid: user.uid,
-        createdAt: new Date().toISOString()
+        createdAt: createdAt
       };
       
       storage.saveStory(newStory);
@@ -167,9 +158,7 @@ function AppContent() {
 
       <main className="relative z-10 container mx-auto px-4 pb-20">
         <AnimatePresence mode="wait">
-          {view === "login" ? (
-            <Login />
-          ) : view === "settings" ? (
+          {view === "settings" ? (
             <div key="settings" className="mt-8">
               <Settings />
             </div>
@@ -220,7 +209,6 @@ function AppContent() {
         <Navigation 
           activeView={view} 
           onViewChange={setView} 
-          onLogout={handleLogoutAction} 
         />
       )}
     </div>
