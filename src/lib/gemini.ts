@@ -81,7 +81,7 @@ export async function generateSpeech(text: string): Promise<string> {
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash", // Usando modelo estável
+      model: "gemini-1.5-flash-latest", // Usando o alias mais estável e atualizado
       contents: [{ parts: [{ text: `Leia com uma voz doce e calma de contador de histórias infantil: ${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
@@ -164,7 +164,7 @@ export async function generateStory(params: BookParams): Promise<Story> {
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash", // Usando modelo estável
+      model: "gemini-1.5-flash-latest", // Usando o alias mais estável e atualizado
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
         responseMimeType: "application/json",
