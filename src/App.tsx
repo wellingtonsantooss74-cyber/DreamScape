@@ -38,15 +38,19 @@ function AppContent() {
     }
   }, [user, authLoading]);
 
-  // Load stories from LocalStorage
+  // Load stories from IndexedDB
   useEffect(() => {
     if (!user) {
       setSavedStories([]);
       return;
     }
 
-    const stories = storage.getStories();
-    setSavedStories(stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    const loadStories = async () => {
+      const stories = await storage.getStories();
+      setSavedStories(stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    };
+    
+    loadStories();
   }, [user, view]);
 
   const handleGenerate = async (params: BookParams) => {
@@ -65,7 +69,7 @@ function AppContent() {
         createdAt: createdAt
       };
       
-      storage.saveStory(newStory);
+      await storage.saveStory(newStory);
       setStory(newStory);
       setView("reader");
     } catch (err) {
@@ -83,13 +87,13 @@ function AppContent() {
 
   const handleDeleteStory = async (id: string) => {
     if (confirm("Tem certeza que deseja apagar esta história mágica para sempre?")) {
-      storage.deleteStory(id);
+      await storage.deleteStory(id);
       setSavedStories(prev => prev.filter(s => s.id !== id));
     }
   };
 
   const handleUpdateStory = async (updatedStory: Story) => {
-    storage.saveStory(updatedStory);
+    await storage.saveStory(updatedStory);
     setStory(updatedStory);
   };
 
