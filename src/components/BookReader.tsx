@@ -81,7 +81,7 @@ export function BookReader({ story, onReset, onUpdateStory, isGeneratingImage, s
   }, [currentPage]);
 
   const loadPageImage = async (index: number) => {
-    if (pages[index].imageUrl || loadingImages[index] || isGeneratingImage) return;
+    if (pages[index].imageUrl || loadingImages[index]) return;
 
     setLoadingImages(prev => ({ ...prev, [index]: true }));
     setIsGeneratingImage(true);
@@ -198,12 +198,34 @@ export function BookReader({ story, onReset, onUpdateStory, isGeneratingImage, s
               {/* Image Side */}
               <div className="w-full md:w-1/2 h-full relative bg-muted">
                 {pages[currentPage].imageUrl ? (
-                  <img
-                    src={pages[currentPage].imageUrl}
-                    alt={`Ilustração da página ${currentPage + 1}`}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
+                  <div className="relative w-full h-full group">
+                    <img
+                      src={pages[currentPage].imageUrl}
+                      alt={`Ilustração da página ${currentPage + 1}`}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        // If image fails to load, clear it so user can retry
+                        console.error("Image load error");
+                      }}
+                    />
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        onClick={() => {
+                          const updatedPages = [...pages];
+                          updatedPages[currentPage].imageUrl = undefined;
+                          setPages(updatedPages);
+                          loadPageImage(currentPage);
+                        }}
+                        className="bg-white/80 backdrop-blur hover:bg-white text-xs gap-1"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        Regerar Imagem
+                      </Button>
+                    </div>
+                  </div>
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center p-8 space-y-4">
                     <Skeleton className="w-full h-full absolute inset-0" />

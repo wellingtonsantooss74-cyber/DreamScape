@@ -179,9 +179,8 @@ export async function generatePageImage(prompt: string, retryCount = 0): Promise
   const ai = getAI();
   const MAX_RETRIES = 2;
   const fallbackUrl = (p: string) => {
-    const encodedPrompt = encodeURIComponent(p);
-    // Using a more reliable seed and model parameter for the fallback
-    return `https://pollinations.ai/p/${encodedPrompt}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&model=flux&nologo=true`;
+    const encodedPrompt = encodeURIComponent(`${p}, high quality, children book illustration, vibrant colors`);
+    return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&nologo=true`;
   };
 
   try {
