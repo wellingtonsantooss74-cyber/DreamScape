@@ -39,7 +39,6 @@ const STORY_SCHEMA = {
         properties: {
           numero: { type: Type.INTEGER },
           texto: { type: Type.STRING },
-          prompt_imagem: { type: Type.STRING },
           audio_metadata: {
             type: Type.OBJECT,
             properties: {
@@ -49,7 +48,7 @@ const STORY_SCHEMA = {
             required: ["efeito_gatilho", "ritmo_sugerido"]
           }
         },
-        required: ["numero", "texto", "prompt_imagem", "audio_metadata"]
+        required: ["numero", "texto", "audio_metadata"]
       }
     },
     interatividade: {
@@ -144,9 +143,7 @@ export async function generateStory(params: BookParams): Promise<Story> {
     Regras da História:
     1. Estrutura: Exatamente 6 páginas.
     2. Conteúdo por Página: 2 a 4 frases curtas e mágicas.
-    3. Consistência Visual: Mantenha a descrição dos personagens e cenários idêntica em todos os prompts de imagem. Use descrições visuais simples e diretas.
-    4. Estilo Artístico: "ilustração de livro infantil fofa e colorida, estilo aquarela digital suave, fundo limpo".
-    5. Direção de Som: Para cada página, defina um "efeito_gatilho" (som curto inicial).
+    3. Direção de Som: Para cada página, defina um "efeito_gatilho" (som curto inicial).
 
     Regras de Interatividade:
     1. Gere 3 perguntas de "Pós-Leitura" ao final.
@@ -171,69 +168,4 @@ export async function generateStory(params: BookParams): Promise<Story> {
   }
 
   return JSON.parse(response.text) as Story;
-}
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-export async function generatePageImage(prompt: string, retryCount = 0): Promise<string> {
-  const ai = getAI();
-  const MAX_RETRIES = 2;
-  const fallbackUrl = (p: string) => {
-    const encodedPrompt = encodeURIComponent(`${p}, high quality, children book illustration, vibrant colors`);
-    return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&seed=${Math.floor(Math.random() * 1000000)}&nologo=true`;
-  };
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-image-preview',
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      config: {
-        imageConfig: { 
-          aspectRatio: "1:1",
-          imageSize: "1K"
-        } as any,
-        tools: [
-          {
-            googleSearch: {
-              searchTypes: {
-                webSearch: {},
-                imageSearch: {},
-              }
-            } as any,
-          },
-        ],
-      },
-    });
-
-    // Iterate through candidates and parts to find the image data
-    const candidate = response.candidates?.[0];
-    if (candidate?.content?.parts) {
-      for (const part of candidate.content.parts) {
-        if (part.inlineData?.data) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
-      }
-    }
-    
-    console.warn("Gemini Image API returned no image data, using fallback...");
-    return fallbackUrl(prompt);
-  } catch (error: any) {
-    const isQuotaError = error?.message?.includes("429") || error?.message?.includes("RESOURCE_EXHAUSTED");
-    
-    // Smart Retry Logic: If it's a quota error and we haven't reached max retries, wait and try again
-    if (isQuotaError && retryCount < MAX_RETRIES) {
-      const waitTime = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s
-      console.warn(`Quota excedida. Tentando novamente em ${waitTime/1000}s... (Tentativa ${retryCount + 1}/${MAX_RETRIES})`);
-      await sleep(waitTime);
-      return generatePageImage(prompt, retryCount + 1);
-    }
-
-    if (isQuotaError) {
-      console.warn("Quota do Gemini Image excedida após tentativas, usando fallback mágico de alta velocidade...");
-    } else {
-      console.error("Erro ao gerar imagem com Gemini:", error);
-    }
-    
-    return fallbackUrl(prompt);
-  }
 }

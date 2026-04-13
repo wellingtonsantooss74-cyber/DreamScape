@@ -82,16 +82,7 @@ export function StoryLibrary({ stories, onSelect, onDelete }: StoryLibraryProps)
               </AnimatePresence>
 
               <div className="h-32 bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center relative overflow-hidden">
-                {story.paginas[0]?.imageUrl ? (
-                  <img 
-                    src={story.paginas[0].imageUrl} 
-                    alt={story.titulo} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <BookOpen className="h-12 w-12 text-purple-300 relative z-10" />
-                )}
+                <BookOpen className="h-12 w-12 text-purple-300 relative z-10" />
                 <div className="absolute inset-0 bg-white/20 group-hover:bg-transparent transition-colors" />
               </div>
               <CardHeader>

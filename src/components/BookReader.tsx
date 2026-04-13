@@ -3,23 +3,18 @@ import { Story, Page } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight, BookOpen, Download, RefreshCw, Sparkles, Volume2, VolumeX, Loader2, MessageCircle, CheckCircle2, Library } from "lucide-react";
-import { generatePageImage, generateSpeech, playAudio } from "../lib/gemini";
-import { Skeleton } from "./ui/skeleton";
+import { generateSpeech, playAudio } from "../lib/gemini";
 import { Input } from "./ui/input";
 
 interface BookReaderProps {
   story: Story;
   onReset: () => void;
   onUpdateStory: (story: Story) => void;
-  isGeneratingImage: boolean;
-  setIsGeneratingImage: (val: boolean) => void;
 }
 
-export function BookReader({ story, onReset, onUpdateStory, isGeneratingImage, setIsGeneratingImage }: BookReaderProps) {
+export function BookReader({ story, onReset, onUpdateStory }: BookReaderProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [pages, setPages] = useState<Page[]>(story.paginas);
-  const [loadingImages, setLoadingImages] = useState<Record<number, boolean>>({});
-  const [isPreloading, setIsPreloading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [currentAudioSource, setCurrentAudioSource] = useState<AudioBufferSourceNode | null>(null);
@@ -54,50 +49,12 @@ export function BookReader({ story, onReset, onUpdateStory, isGeneratingImage, s
   }, [currentAudioSource]);
 
   useEffect(() => {
-    // Initial load: start loading first and second page images in parallel
-    if (!pages[0].imageUrl) loadPageImage(0);
-    if (pages.length > 1 && !pages[1].imageUrl) loadPageImage(1);
-  }, []);
-
-  useEffect(() => {
-    // Pre-generation logic: when on page N, start loading page N+1
-    const nextIdx = currentPage + 1;
-    if (nextIdx < pages.length && !pages[nextIdx].imageUrl && !loadingImages[nextIdx]) {
-      setIsPreloading(true);
-      loadPageImage(nextIdx).finally(() => setIsPreloading(false));
-    }
-    
-    // Also pre-generate N+2 if possible
-    const farIdx = currentPage + 2;
-    if (farIdx < pages.length && !pages[farIdx].imageUrl && !loadingImages[farIdx]) {
-      loadPageImage(farIdx);
-    }
-
     // Stop narration when changing page
     try {
       currentAudioSource?.stop();
     } catch (e) {}
     setIsPlaying(false);
   }, [currentPage]);
-
-  const loadPageImage = async (index: number) => {
-    if (pages[index].imageUrl || loadingImages[index]) return;
-
-    setLoadingImages(prev => ({ ...prev, [index]: true }));
-    setIsGeneratingImage(true);
-    try {
-      const imageUrl = await generatePageImage(pages[index].prompt_imagem);
-      const updatedPages = [...pages];
-      updatedPages[index] = { ...updatedPages[index], imageUrl };
-      setPages(updatedPages);
-      onUpdateStory({ ...story, paginas: updatedPages });
-    } catch (error) {
-      console.error("Erro ao carregar imagem:", error);
-    } finally {
-      setLoadingImages(prev => ({ ...prev, [index]: false }));
-      setIsGeneratingImage(false);
-    }
-  };
 
   const nextPage = () => {
     if (currentPage < pages.length - 1) {
@@ -176,12 +133,6 @@ export function BookReader({ story, onReset, onUpdateStory, isGeneratingImage, s
             Sair da Leitura
           </Button>
         </div>
-        {isPreloading && (
-          <div className="flex items-center gap-2 ml-4 text-xs text-primary/60 animate-pulse">
-            <Sparkles className="h-3 w-3" />
-            <span>Preparando próximas páginas...</span>
-          </div>
-        )}
       </div>
 
       <div className="relative aspect-[16/9] bg-white rounded-3xl shadow-2xl overflow-hidden border-8 border-white">
@@ -189,90 +140,40 @@ export function BookReader({ story, onReset, onUpdateStory, isGeneratingImage, s
           {!showQuiz ? (
             <motion.div
               key={currentPage}
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -50 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.5, ease: "easeInOut" }}
-              className="absolute inset-0 flex flex-col md:flex-row"
+              className="absolute inset-0 flex flex-col items-center justify-center bg-orange-50/30 p-8 md:p-16"
             >
-              {/* Image Side */}
-              <div className="w-full md:w-1/2 h-full relative bg-muted">
-                {pages[currentPage].imageUrl ? (
-                  <div className="relative w-full h-full group">
-                    <img
-                      src={pages[currentPage].imageUrl}
-                      alt={`Ilustração da página ${currentPage + 1}`}
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        // If image fails to load, clear it so user can retry
-                        console.error("Image load error");
-                      }}
-                    />
-                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button 
-                        variant="secondary" 
-                        size="sm" 
-                        onClick={() => {
-                          const updatedPages = [...pages];
-                          updatedPages[currentPage].imageUrl = undefined;
-                          setPages(updatedPages);
-                          loadPageImage(currentPage);
-                        }}
-                        className="bg-white/80 backdrop-blur hover:bg-white text-xs gap-1"
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                        Regerar Imagem
-                      </Button>
-                    </div>
+              <div className="max-w-3xl w-full space-y-8 text-center">
+                <div className="flex justify-between items-center border-b border-primary/10 pb-4">
+                  <div className="flex flex-col text-left">
+                    <span className="text-sm font-mono text-primary/60 uppercase tracking-widest">Página {currentPage + 1} de {pages.length}</span>
+                    <span className="text-[10px] text-slate-400 italic mt-1">
+                      ✨ {pages[currentPage].audio_metadata.efeito_gatilho}
+                    </span>
                   </div>
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-8 space-y-4">
-                    <Skeleton className="w-full h-full absolute inset-0" />
-                    <div className="relative z-10 text-center">
-                      <motion.div
-                        animate={{ scale: [1, 1.1, 1] }}
-                        transition={{ repeat: Infinity, duration: 2 }}
-                      >
-                        <Sparkles className="h-12 w-12 text-primary/50 mx-auto" />
-                      </motion.div>
-                      <p className="text-muted-foreground mt-2 font-medium">Pintando a cena...</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Text Side */}
-              <div className="w-full md:w-1/2 h-full bg-orange-50/30 p-8 md:p-12 flex flex-col justify-center relative">
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-mono text-primary/60 uppercase tracking-widest">Página {currentPage + 1} de {pages.length}</span>
-                      <span className="text-[10px] text-slate-400 italic mt-1">
-                        ✨ {pages[currentPage].audio_metadata.efeito_gatilho}
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleReadPage}
-                      disabled={isLoadingAudio}
-                      className="rounded-full hover:bg-primary/10 text-primary"
-                    >
-                      {isLoadingAudio ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : isPlaying ? (
-                        <VolumeX className="h-5 w-5" />
-                      ) : (
-                        <Volume2 className="h-5 w-5" />
-                      )}
-                      <span className="ml-2 hidden sm:inline">{isPlaying ? "Parar" : "Ouvir"}</span>
-                    </Button>
-                  </div>
-                  <p className="text-2xl md:text-3xl font-serif leading-relaxed text-slate-800">
-                    {pages[currentPage].texto}
-                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleReadPage}
+                    disabled={isLoadingAudio}
+                    className="rounded-full hover:bg-primary/10 text-primary"
+                  >
+                    {isLoadingAudio ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : isPlaying ? (
+                      <VolumeX className="h-5 w-5" />
+                    ) : (
+                      <Volume2 className="h-5 w-5" />
+                    )}
+                    <span className="ml-2 hidden sm:inline">{isPlaying ? "Parar" : "Ouvir"}</span>
+                  </Button>
                 </div>
+                <p className="text-3xl md:text-4xl font-serif leading-relaxed text-slate-800">
+                  {pages[currentPage].texto}
+                </p>
               </div>
             </motion.div>
           ) : (

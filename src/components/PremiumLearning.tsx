@@ -1,18 +1,45 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, GraduationCap, Calculator, Pencil, CheckCircle2, XCircle, Trophy, Star } from "lucide-react";
+import { supabase } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 
 type GameType = "literacy" | "math";
 
 export function PremiumLearning() {
+  const { user } = useAuth();
   const [game, setGame] = useState<GameType | null>(null);
   const [score, setScore] = useState(0);
   const [currentChallenge, setCurrentChallenge] = useState<any>(null);
   const [userAnswer, setUserAnswer] = useState("");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  useEffect(() => {
+    if (user && supabase) {
+      // Carrega a pontuação do banco de dados
+      supabase.from('learning_scores')
+        .select('score')
+        .eq('uid', user.uid)
+        .single()
+        .then(({ data }) => {
+          if (data) setScore(data.score);
+        });
+    }
+  }, [user]);
+
+  const updateScore = async (newScore: number) => {
+    setScore(newScore);
+    if (user && supabase) {
+      await supabase.from('learning_scores').upsert({
+        uid: user.uid,
+        score: newScore,
+        updated_at: new Date().toISOString()
+      });
+    }
+  };
 
   const startLiteracy = () => {
     setGame("literacy");
@@ -31,6 +58,28 @@ export function PremiumLearning() {
       { word: "GATO", missing: "_ATO", answer: "G" },
       { word: "DADO", missing: "DA_O", answer: "D" },
       { word: "LUA", missing: "L_A", answer: "U" },
+      { word: "SOL", missing: "S_L", answer: "O" },
+      { word: "MACA", missing: "MA_A", answer: "C" },
+      { word: "PATO", missing: "PA_O", answer: "T" },
+      { word: "SAPO", missing: "S_PO", answer: "A" },
+      { word: "MESA", missing: "M_SA", answer: "E" },
+      { word: "BOLO", missing: "B_LO", answer: "O" },
+      { word: "FADA", missing: "FA_A", answer: "D" },
+      { word: "VACA", missing: "VA_A", answer: "C" },
+      { word: "RATO", missing: "_ATO", answer: "R" },
+      { word: "LEAO", missing: "LE_O", answer: "A" },
+      { word: "URSO", missing: "UR_O", answer: "S" },
+      { word: "FLOR", missing: "FL_R", answer: "O" },
+      { word: "TREM", missing: "TR_M", answer: "E" },
+      { word: "BOTA", missing: "BO_A", answer: "T" },
+      { word: "FOGO", missing: "FO_O", answer: "G" },
+      { word: "GELO", missing: "G_LO", answer: "E" },
+      { word: "MALA", missing: "MA_A", answer: "L" },
+      { word: "SINO", missing: "SI_O", answer: "N" },
+      { word: "UVA", missing: "U_A", answer: "V" },
+      { word: "ZEBRA", missing: "ZE_RA", answer: "B" },
+      { word: "NAVIO", missing: "NA_IO", answer: "V" },
+      { word: "PEIXE", missing: "PEI_E", answer: "X" }
     ];
     const challenge = words[Math.floor(Math.random() * words.length)];
     setCurrentChallenge(challenge);
@@ -39,11 +88,23 @@ export function PremiumLearning() {
   };
 
   const generateMathChallenge = () => {
-    const a = Math.floor(Math.random() * 10) + 1;
-    const b = Math.floor(Math.random() * 10) + 1;
+    const operations = ['+', '-'];
+    const op = operations[Math.floor(Math.random() * operations.length)];
+    let a, b, answer;
+
+    if (op === '+') {
+      a = Math.floor(Math.random() * 15) + 1;
+      b = Math.floor(Math.random() * 10) + 1;
+      answer = a + b;
+    } else {
+      a = Math.floor(Math.random() * 15) + 5; // Ensure a is at least 5
+      b = Math.floor(Math.random() * a) + 1;  // Ensure b is smaller than or equal to a
+      answer = a - b;
+    }
+
     setCurrentChallenge({
-      question: `${a} + ${b} = ?`,
-      answer: (a + b).toString()
+      question: `${a} ${op} ${b} = ?`,
+      answer: answer.toString()
     });
     setUserAnswer("");
     setFeedback(null);
@@ -52,7 +113,7 @@ export function PremiumLearning() {
   const checkAnswer = () => {
     if (userAnswer.toUpperCase() === currentChallenge.answer.toUpperCase()) {
       setFeedback({ type: "success", message: "Incrível! Você acertou! ✨" });
-      setScore(score + 10);
+      updateScore(score + 10);
       setTimeout(() => {
         if (game === "literacy") generateLiteracyChallenge();
         else generateMathChallenge();
@@ -67,12 +128,12 @@ export function PremiumLearning() {
     <div className="max-w-4xl mx-auto space-y-6">
       {!game ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Card className="cursor-pointer border-none shadow-xl bg-gradient-to-br from-primary to-primary/60 text-white overflow-hidden relative group" onClick={startLiteracy}>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="h-full">
+            <Card className="cursor-pointer border-none shadow-xl bg-gradient-to-br from-primary to-primary/60 text-white overflow-hidden relative group h-full flex flex-col" onClick={startLiteracy}>
               <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-125 transition-transform">
                 <Pencil className="h-24 w-24" />
               </div>
-              <CardHeader>
+              <CardHeader className="flex-grow">
                 <CardTitle className="text-2xl flex items-center gap-2">
                   <GraduationCap className="h-6 w-6" />
                   Alfabetização
@@ -81,18 +142,18 @@ export function PremiumLearning() {
                   Brinque com as letras e descubra novas palavras mágicas!
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="mt-auto">
                 <Button className="w-full bg-white text-primary hover:bg-white/90">Começar a Escrever</Button>
               </CardContent>
             </Card>
           </motion.div>
 
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Card className="cursor-pointer border-none shadow-xl bg-gradient-to-br from-secondary to-secondary/60 text-white overflow-hidden relative group" onClick={startMath}>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="h-full">
+            <Card className="cursor-pointer border-none shadow-xl bg-gradient-to-br from-primary to-primary/80 text-white overflow-hidden relative group h-full flex flex-col" onClick={startMath}>
               <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-125 transition-transform">
                 <Calculator className="h-24 w-24" />
               </div>
-              <CardHeader>
+              <CardHeader className="flex-grow">
                 <CardTitle className="text-2xl flex items-center gap-2">
                   <Calculator className="h-6 w-6" />
                   Contas Básicas
@@ -101,8 +162,8 @@ export function PremiumLearning() {
                   Desafios matemáticos divertidos para pequenos gênios!
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button className="w-full bg-white text-secondary hover:bg-white/90">Começar a Somar</Button>
+              <CardContent className="mt-auto">
+                <Button className="w-full bg-white text-primary hover:bg-white/90">Começar a Somar</Button>
               </CardContent>
             </Card>
           </motion.div>

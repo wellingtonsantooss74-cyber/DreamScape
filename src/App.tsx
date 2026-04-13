@@ -27,7 +27,6 @@ function AppContent() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("library");
   const [savedStories, setSavedStories] = useState<Story[]>([]);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   // Sync view with auth state
   useEffect(() => {
@@ -47,7 +46,7 @@ function AppContent() {
     }
 
     const loadStories = async () => {
-      const stories = await storage.getStories();
+      const stories = await storage.getStories(user.uid);
       setSavedStories(stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     };
     
@@ -114,9 +113,6 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
-      {isGeneratingImage && (
-        <div className="fixed top-0 left-0 right-0 h-1 bg-primary z-[100] animate-pulse" />
-      )}
       {/* Magical Background Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px]" />
@@ -198,8 +194,6 @@ function AppContent() {
                 story={story} 
                 onReset={handleReset} 
                 onUpdateStory={handleUpdateStory}
-                isGeneratingImage={isGeneratingImage}
-                setIsGeneratingImage={setIsGeneratingImage}
               />
             </div>
           ) : null}

@@ -1,25 +1,27 @@
 import React, { useEffect, useState } from "react";
 import { useTheme, ThemeType, ColorType, NavColorType } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
-import { Moon, Sun, Coffee, Waves, Check, Loader2, ShieldCheck, Layout, Palette, Sparkles } from "lucide-react";
+import { Moon, Sun, Coffee, Waves, Check, Loader2, ShieldCheck, Layout, Palette, Sparkles, LogOut, LogIn } from "lucide-react";
 import { Input } from "./ui/input";
+import { supabase } from "../lib/supabase";
 
 import { ParentSettings } from "./ParentSettings";
 
 export function Settings() {
   const { theme, color, navColor, setTheme, setColor, setNavColor } = useTheme();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, signIn, signOut } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"general" | "parents">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "parents" | "account">("general");
   const [showPinEntry, setShowPinEntry] = useState(false);
   const [enteredPin, setEnteredPin] = useState("");
   const [pinError, setPinError] = useState(false);
+  const [email, setEmail] = useState("");
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
 
   const handleParentTabClick = () => {
-    // If user has a PIN, ask for it
     if (user && (user as any).parentPin) {
       setShowPinEntry(true);
     } else {
@@ -60,8 +62,33 @@ export function Settings() {
       setNavColor(newNavColor);
     }
     
-    updateUser(updates);
+    await updateUser(updates);
     setIsSaving(false);
+  };
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setIsAuthLoading(true);
+    try {
+      await signIn(email);
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao enviar link de login.");
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    setIsAuthLoading(true);
+    try {
+      await signOut();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsAuthLoading(false);
+    }
   };
 
   const themes: { id: ThemeType; label: string; icon: React.ReactNode }[] = [
@@ -105,6 +132,14 @@ export function Settings() {
           }`}
         >
           Área dos Pais
+        </button>
+        <button
+          onClick={() => setActiveTab("account")}
+          className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
+            activeTab === "account" ? "bg-white shadow-sm text-primary" : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          Conta
         </button>
       </div>
 
@@ -188,6 +223,60 @@ export function Settings() {
                 ))}
               </div>
             </div>
+          </CardContent>
+        </Card>
+      ) : activeTab === "account" ? (
+        <Card className="w-full bg-white/80 backdrop-blur-md border-none shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-2xl font-serif text-slate-800">Sua Conta</CardTitle>
+            <CardDescription>
+              {supabase ? "Gerencie seu login e sincronização na nuvem." : "O Supabase não está configurado. Suas histórias são salvas apenas neste dispositivo."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {user?.email ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
+                  <p className="text-sm text-slate-500 mb-1">Conectado como:</p>
+                  <p className="font-medium text-slate-800">{user.email}</p>
+                </div>
+                <Button 
+                  variant="destructive" 
+                  className="w-full gap-2" 
+                  onClick={handleSignOut}
+                  disabled={isAuthLoading}
+                >
+                  {isAuthLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                  Sair da Conta
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email para Login Mágico</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={!supabase || isAuthLoading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enviaremos um link mágico para você entrar sem senha.
+                  </p>
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full gap-2" 
+                  disabled={!supabase || isAuthLoading}
+                >
+                  {isAuthLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
+                  Entrar / Criar Conta
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
       ) : (

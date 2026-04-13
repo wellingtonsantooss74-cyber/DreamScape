@@ -6,7 +6,7 @@ export interface Character {
 export interface Page {
   numero: number;
   texto: string;
-  prompt_imagem: string;
+  prompt_imagem?: string;
   imageUrl?: string;
   audio_metadata: {
     efeito_gatilho: string;
