@@ -5,8 +5,7 @@ import { BookReader } from "./components/BookReader";
 import { StoryLibrary } from "./components/StoryLibrary";
 import { Settings } from "./components/Settings";
 import { Navigation } from "./components/Navigation";
-import { PremiumLearning } from "./components/PremiumLearning";
-import { PremiumWall } from "./components/PremiumWall";
+import { Learning } from "./components/Learning";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -209,7 +208,7 @@ function AppContent() {
             </div>
           ) : view === "learning" ? (
             <div key="learning" className="mt-8">
-              {(user as any)?.isPremium ? <PremiumLearning /> : <PremiumWall />}
+              <Learning />
             </div>
           ) : story ? (
             <div key="reader" className="mt-4">

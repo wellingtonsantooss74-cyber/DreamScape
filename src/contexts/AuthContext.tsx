@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: email || null,
         displayName: data?.display_name || "Explorador",
         photoURL: data?.photo_url || null,
-        isPremium: data?.is_premium ?? true,
+        isPremium: true,
         theme: data?.theme || "light",
         color: data?.color || "purple",
         navColor: data?.nav_color || "default",
@@ -130,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           theme: updated.theme,
           color: updated.color,
           nav_color: updated.navColor,
-          is_premium: updated.isPremium,
+          is_premium: true,
           parent_pin: updated.parentPin,
           children_profiles: updated.childrenProfiles
         });

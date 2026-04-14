@@ -12,13 +12,12 @@ import { ParentSettings } from "./ParentSettings";
 
 export function Settings() {
   const { theme, color, navColor, setTheme, setColor, setNavColor } = useTheme();
-  const { user, updateUser, signIn, signOut } = useAuth();
+  const { user, updateUser, signOut } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"general" | "parents" | "account">("general");
   const [showPinEntry, setShowPinEntry] = useState(false);
   const [enteredPin, setEnteredPin] = useState("");
   const [pinError, setPinError] = useState(false);
-  const [email, setEmail] = useState("");
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
   const handleParentTabClick = () => {
@@ -64,20 +63,6 @@ export function Settings() {
     
     await updateUser(updates);
     setIsSaving(false);
-  };
-
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    setIsAuthLoading(true);
-    try {
-      await signIn(email);
-    } catch (error) {
-      console.error(error);
-      alert("Erro ao enviar link de login.");
-    } finally {
-      setIsAuthLoading(false);
-    }
   };
 
   const handleSignOut = async () => {
@@ -251,31 +236,9 @@ export function Settings() {
                 </Button>
               </div>
             ) : (
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email para Login Mágico</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    disabled={!supabase || isAuthLoading}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Enviaremos um link mágico para você entrar sem senha.
-                  </p>
-                </div>
-                <Button 
-                  type="submit" 
-                  className="w-full gap-2" 
-                  disabled={!supabase || isAuthLoading}
-                >
-                  {isAuthLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
-                  Entrar / Criar Conta
-                </Button>
-              </form>
+              <div className="text-center py-8">
+                <p className="text-slate-500">Você não está conectado.</p>
+              </div>
             )}
           </CardContent>
         </Card>

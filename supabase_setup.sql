@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   theme TEXT DEFAULT 'light',
   color TEXT DEFAULT 'purple',
   nav_color TEXT DEFAULT 'default',
-  is_premium BOOLEAN DEFAULT false,
+  is_premium BOOLEAN DEFAULT true,
   parent_pin TEXT,
   children_profiles JSONB DEFAULT '[]'::jsonb,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())

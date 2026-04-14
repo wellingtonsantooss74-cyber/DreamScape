@@ -9,7 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 
 type GameType = "literacy" | "math";
 
-export function PremiumLearning() {
+export function Learning() {
   const { user } = useAuth();
   const [game, setGame] = useState<GameType | null>(null);
   const [score, setScore] = useState(0);
