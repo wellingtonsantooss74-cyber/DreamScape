@@ -4,7 +4,8 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Inicializa o cliente do Supabase apenas se as chaves estiverem configuradas e forem válidas
-const isValidUrl = (url: string) => {
+const isValidSupabaseConfig = (url: string | undefined, key: string | undefined) => {
+  if (!url || !key || url.includes("TODO") || key.includes("TODO")) return false;
   try {
     new URL(url);
     return true;
@@ -13,6 +14,6 @@ const isValidUrl = (url: string) => {
   }
 };
 
-export const supabase = (supabaseUrl && isValidUrl(supabaseUrl) && supabaseAnonKey)
-  ? createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = isValidSupabaseConfig(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl!, supabaseAnonKey!)
   : null;

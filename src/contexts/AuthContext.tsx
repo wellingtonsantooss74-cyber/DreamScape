@@ -18,7 +18,6 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   updateUser: (data: Partial<User>) => Promise<void>;
-  signIn: (email: string) => Promise<void>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -106,8 +105,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         parentPin: data?.parent_pin,
         childrenProfiles: data?.children_profiles || []
       });
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error("Erro fatal ao carregar perfil:", e);
+      if (e.message?.includes("fetch")) {
+        alert("Erro de conexão com o Supabase. Verifique se a URL do projeto está correta.");
+      }
     } finally {
       setLoading(false);
     }
@@ -142,24 +144,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       // Fallback local
       localStorage.setItem("dreamscape_local_user", JSON.stringify(updated));
-    }
-  };
-
-  const signIn = async (email: string) => {
-    if (!supabase) {
-      alert("Supabase não configurado. Usando modo local.");
-      return;
-    }
-    try {
-      const { error } = await supabase.auth.signInWithOtp({ email });
-      if (error) throw error;
-      alert("Link mágico enviado para seu email!");
-    } catch (e: any) {
-      console.error("Erro no login:", e);
-      if (e.message?.includes("fetch")) {
-        throw new Error("Não foi possível conectar ao servidor de login. Verifique sua internet ou se o Supabase está configurado corretamente.");
-      }
-      throw e;
     }
   };
 
@@ -201,7 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, updateUser, signIn, signInWithPassword, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, updateUser, signInWithPassword, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

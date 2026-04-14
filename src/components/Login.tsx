@@ -9,23 +9,19 @@ import { motion } from "motion/react";
 import { supabase } from "../lib/supabase";
 
 export function Login() {
-  const { signIn, signInWithPassword, signUp } = useAuth();
+  const { signInWithPassword, signUp } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [mode, setMode] = useState<"magic" | "password" | "register">("magic");
+  const [mode, setMode] = useState<"password" | "register">("password");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !password) return;
     
     setLoading(true);
     try {
-      if (mode === "magic") {
-        await signIn(email);
-        setSent(true);
-      } else if (mode === "password") {
+      if (mode === "password") {
         await signInWithPassword(email, password);
       } else if (mode === "register") {
         await signUp(email, password);
@@ -69,99 +65,66 @@ export function Login() {
             </div>
             <CardTitle className="text-3xl font-serif font-bold text-slate-800">DreamScape</CardTitle>
             <CardDescription className="text-lg">
-              {mode === "magic" ? "Entre com Link Mágico" : mode === "password" ? "Entre com Senha" : "Crie sua Conta"}
+              {mode === "password" ? "Entre com sua Conta" : "Crie sua Conta Mágica"}
             </CardDescription>
+            {!supabase && (
+              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-xs">
+                Aviso: O banco de dados não está conectado. Verifique as chaves na Vercel.
+              </div>
+            )}
           </CardHeader>
           <CardContent className="p-8">
-            {sent ? (
-              <div className="text-center space-y-4 py-4">
-                <div className="h-16 w-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
-                  <LogIn className="h-8 w-8" />
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-mail</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="exemplo@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="h-12 text-lg"
+                    disabled={loading}
+                  />
                 </div>
-                <h3 className="text-xl font-bold text-slate-800">Verifique seu E-mail</h3>
-                <p className="text-slate-600">
-                  Enviamos um link mágico para <strong>{email}</strong>. Clique no link para entrar no app.
-                </p>
-                <Button variant="outline" onClick={() => setSent(false)} className="mt-4">
-                  Tentar outro e-mail
+                
+                <div className="space-y-2">
+                  <Label htmlFor="password">Senha</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-12 text-lg"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full h-12 text-lg font-bold gap-2" 
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogIn className="h-5 w-5" />}
+                {mode === "password" ? "Entrar" : "Cadastrar"}
+              </Button>
+
+              <div className="pt-2">
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  className="w-full text-xs" 
+                  onClick={() => setMode(mode === "password" ? "register" : "password")}
+                >
+                  {mode === "password" ? "Não tem conta? Cadastre-se agora" : "Já tem conta? Faça login"}
                 </Button>
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Seu E-mail</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="exemplo@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="h-12 text-lg"
-                      disabled={loading}
-                    />
-                  </div>
-                  
-                  {mode !== "magic" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Sua Senha</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="h-12 text-lg"
-                        disabled={loading}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <Button 
-                  type="submit" 
-                  className="w-full h-12 text-lg font-bold gap-2" 
-                  disabled={loading}
-                >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogIn className="h-5 w-5" />}
-                  {mode === "magic" ? "Enviar Link Mágico" : mode === "password" ? "Entrar" : "Cadastrar"}
-                </Button>
-
-                <div className="space-y-2 pt-2">
-                  {mode === "magic" ? (
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      className="w-full text-xs" 
-                      onClick={() => setMode("password")}
-                    >
-                      Prefiro usar e-mail e senha
-                    </Button>
-                  ) : (
-                    <>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        className="w-full text-xs" 
-                        onClick={() => setMode("magic")}
-                      >
-                        Usar Link Mágico (sem senha)
-                      </Button>
-                      <Button 
-                        type="button" 
-                        variant="link" 
-                        className="w-full text-xs" 
-                        onClick={() => setMode(mode === "password" ? "register" : "password")}
-                      >
-                        {mode === "password" ? "Não tem conta? Cadastre-se" : "Já tem conta? Faça login"}
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </form>
-            )}
+            </form>
           </CardContent>
         </Card>
         <p className="text-center mt-8 text-slate-500 text-sm">

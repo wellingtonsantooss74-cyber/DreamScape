@@ -5,11 +5,11 @@ let genAI: GoogleGenAI | null = null;
 
 function getAI() {
   if (!genAI) {
-    // Tenta pegar de process.env (AI Studio) ou import.meta.env (Vercel/Vite)
-    const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+    // No Vite/Vercel (Client-side), usamos apenas import.meta.env
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     
-    if (!apiKey || apiKey === "undefined" || apiKey === "") {
-      throw new Error("Chave de API não encontrada. Configure GEMINI_API_KEY ou VITE_GEMINI_API_KEY.");
+    if (!apiKey || apiKey === "undefined" || apiKey === "" || apiKey.includes("TODO")) {
+      throw new Error("Chave de API Gemini não encontrada ou inválida. Verifique a variável VITE_GEMINI_API_KEY na Vercel.");
     }
     genAI = new GoogleGenAI({ apiKey });
   }
@@ -80,7 +80,7 @@ const STORY_SCHEMA = {
 export async function generateSpeech(text: string): Promise<string> {
   try {
     const ai = getAI();
-    const modelName = "gemini-1.5-flash";
+    const modelName = "gemini-2.5-flash-preview-tts";
     const response = await ai.models.generateContent({
       model: modelName,
       contents: [{ parts: [{ text: `Leia com uma voz doce e calma de contador de histórias infantil: ${text}` }] }],
@@ -167,7 +167,7 @@ export async function generateStory(params: BookParams): Promise<Story> {
       Retorne o JSON seguindo o esquema fornecido.
     `;
 
-    const modelName = "gemini-1.5-flash";
+    const modelName = "gemini-flash-latest";
     const response = await ai.models.generateContent({
       model: modelName,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
